@@ -2,6 +2,7 @@ import os
 import pandas             as pd
 import matplotlib.pyplot  as plt
 import numpy              as np
+import concurrent.futures
 
 from datetime                     import datetime
 from dateutil.relativedelta       import relativedelta
@@ -44,17 +45,25 @@ class Predictor:
     ## Default = 2
     __num_training_years: int
 
+    ## Enables concurrent processing of stations.
+    ## Default = True
+    __enable_multiprocessing: bool
+
+    ## Number of threads for multiprocessing
+    ## Default = 4
+    __num_threads: int
+
     ## Exports the predictions and observed values for each year to a png. 
     ## Default = True
-    __save_chart_for_each_year: bool
+    __enable_export_chart_for_each_year: bool
 
     ## Exports the predictions and observed values for the whole testing period to a single png. 
     ## Default = True
-    __save_chart_single: bool
+    __enable_export_chart_single: bool
 
     ## Exports a chart with the absolute errors for each prediction relative to its observed value to a png. 
     ## Default = True
-    __save_chart_absolute_errors:bool
+    __enable_export_chart_absolute_errors:bool
 
     ## Lower and upper limits for y in charts.
     ## Default upper limit = 8 // Default lower limit = 3
@@ -89,9 +98,9 @@ class Predictor:
 
         ## Default values :)
         ## These be changed at will by using the setters
-        self.save_chart_for_each_year = True
-        self.save_chart_single = True
-        self.save_chart_absolute_errors = True
+        self.enable_export_chart_for_each_year = True
+        self.enable_export_chart_single = True
+        self.enable_export_chart_absolute_errors = True
         self.chart_y_upper_limit = 8
         self.chart_y_lower_limit = 3
         self.chart_height = 25.6
@@ -102,6 +111,8 @@ class Predictor:
         self.num_training_years = 2
         self.tseries_smoothing_level = 0.1
         self.tseries_smoothing_seasonal = 0.2
+        self.enable_multiprocessing = True
+        self.num_threads = 4
 
 
     ## Getters and Setters
@@ -154,28 +165,44 @@ class Predictor:
         self.__num_training_years = num_years
 
     @property
-    def save_chart_for_each_year(self) -> bool:
-        return self.__save_chart_for_each_year
-    
-    @save_chart_for_each_year.setter
-    def save_chart_for_each_year(self, export_charts: bool):
-        self.__save_chart_for_each_year = export_charts
+    def enable_multiprocessing(self) -> bool:
+        return self.__enable_multiprocessing
+
+    @enable_multiprocessing.setter
+    def enable_multiprocessing(self, enable: bool):
+        self.__enable_multiprocessing = enable
 
     @property
-    def save_chart_single(self) -> bool:
-        return self.__save_chart_single
+    def num_threads(self) -> int:
+        return self.__num_threads
     
-    @save_chart_single.setter
-    def save_chart_single(self, export_charts: bool):
-        self.__save_chart_single = export_charts
+    @num_threads.setter
+    def num_threads(self, num: int):
+        self.__num_threads = num
 
     @property
-    def save_chart_absolute_errors(self) -> bool:
-        return self.__save_chart_absolute_errors
+    def enable_export_chart_for_each_year(self) -> bool:
+        return self.__enable_export_chart_for_each_year
     
-    @save_chart_absolute_errors.setter
-    def save_chart_absolute_errors(self, export_charts: bool):
-        self.__save_chart_absolute_errors = export_charts
+    @enable_export_chart_for_each_year.setter
+    def enable_export_chart_for_each_year(self, export_charts: bool):
+        self.__enable_export_chart_for_each_year = export_charts
+
+    @property
+    def enable_export_chart_single(self) -> bool:
+        return self.__enable_export_chart_single
+    
+    @enable_export_chart_single.setter
+    def enable_export_chart_single(self, export_charts: bool):
+        self.__enable_export_chart_single = export_charts
+
+    @property
+    def enable_export_chart_absolute_errors(self) -> bool:
+        return self.__enable_export_chart_absolute_errors
+    
+    @enable_export_chart_absolute_errors.setter
+    def enable_export_chart_absolute_errors(self, export_charts: bool):
+        self.__enable_export_chart_absolute_errors = export_charts
 
     @property
     def chart_y_upper_limit(self) -> float:
@@ -260,57 +287,75 @@ class Predictor:
 
         if not hasattr(self, "charts_export_location"):
             raise Exception("Please select a folder to export your charts to first!")
-    
+
+        if not self.enable_multiprocessing:
+            for station in stations:
+                self.plot_prediction_station(station, datasets_location)
+
+        if self.enable_multiprocessing:
+            count = 0
+            
+            ## Spawning self.num_threads processes for each station
+            while count <= len(stations):
+                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    [executor.submit(self.plot_prediction_station, station, datasets_location) for station in stations[count : count + self.num_threads]]
+                
+                count += self.num_threads
+                
+        
+
+    def plot_prediction_station(self, station_id, datasets_location):
         ## How many years the time series lasts. This is important to iterate
         ## over the series with different training sizes. The + 1 is to make it inclusive
         ## of the last year.
         duration_tseries_years = self.tseries_end.year - self.tseries_start.year + 1
 
-        for station_id in stations:
-            if not os.path.exists(f"{self.charts_export_location}{os.sep}{station_id}"):
-                os.makedirs(f"{self.charts_export_location}{os.sep}{station_id}")
+        if not os.path.exists(f"{self.charts_export_location}{os.sep}{station_id}"):
+            os.makedirs(f"{self.charts_export_location}{os.sep}{station_id}")
 
-            self._split_train_test(self.num_training_years, station_id, datasets_location)
+        self._split_train_test(self.num_training_years, station_id, datasets_location)
 
-            self.predictions = []
+        self.predictions = []
 
-            ## Auxiliar array for adding more data to training without 
-            ## affecting self.__training_dataset
-            testing_aux = self.__testing_dataset.copy()
+        ## Auxiliar array for adding more data to training without 
+        ## affecting self.__training_dataset
+        testing_aux = self.__testing_dataset.copy()
 
-            for year in range(self.num_training_years, duration_tseries_years):
-                self.predictions.extend(ExponentialSmoothing(
-                                            initialization_method = 'estimated',
-                                            endog = np.asarray(self.__training_dataset),
-                                            trend = None,
-                                            seasonal = 'add',
-                                            seasonal_periods = 12
-                                        ).fit(
-                                            smoothing_level = self.tseries_smoothing_level,
-                                            smoothing_seasonal = self.tseries_smoothing_seasonal
-                                        ).forecast(
-                                            steps = 12
-                                        )
+        for year in range(self.num_training_years, duration_tseries_years):
+            self.predictions.extend(ExponentialSmoothing(
+                                        initialization_method = 'estimated',
+                                        endog = np.asarray(self.__training_dataset),
+                                        trend = None,
+                                        seasonal = 'add',
+                                        seasonal_periods = 12
+                                    ).fit(
+                                        smoothing_level = self.tseries_smoothing_level,
+                                        smoothing_seasonal = self.tseries_smoothing_seasonal
+                                    ).forecast(
+                                        steps = 12
                                     )
-        
-                ## Since the goal of the paper is to predict only the next
-                ## 12 months, here we move the next year (12 months) from the testing
-                ## database to the training database
-                self.__training_dataset.extend(testing_aux[0 : 12])
+                                )
+    
+            ## Since the goal of the paper is to predict only the next
+            ## 12 months, here we move the next year (12 months) from the testing
+            ## database to the training database
+            self.__training_dataset.extend(testing_aux[0 : 12])
 
-                ## Deleting the first 12 elements so we can simply 
-                ## extend self.__training_dataset by the first 12 elements
-                ## every time
-                del testing_aux[0 : 12]
+            ## Deleting the first 12 elements so we can simply 
+            ## extend self.__training_dataset by the first 12 elements
+            ## every time
+            del testing_aux[0 : 12]
 
-            if self.save_chart_single:
-                self._export_chart_single(station_id)
-                
-            if self.save_chart_absolute_errors:
-                self._export_chart_absolute_errors(station_id)
-                
-            if self.save_chart_for_each_year:
-                self._export_chart_for_each_year(station_id, duration_tseries_years)
+        if self.enable_export_chart_single:
+            self._export_chart_single(station_id)
+            
+        if self.enable_export_chart_absolute_errors:
+            self._export_chart_absolute_errors(station_id)
+            
+        if self.enable_export_chart_for_each_year:
+            self._export_chart_for_each_year(station_id, duration_tseries_years)
+
+        print(f"Finished processing station with ID {station_id}")
 
 
     ## Splits the data into training and testing datasets. Also finds the dates for the X axis
