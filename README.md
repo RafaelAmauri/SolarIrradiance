@@ -1,6 +1,6 @@
 # Development of a Solar Radiation Map Using Artificial Intelligence Techniques
 
-This repository hosts my python implementation of the paper "Development of a Solar Radiation Map Using Artificial Intelligence Techniques", authored by Rafael Amauri Diniz Augusto, Cristiana Brasil Maia, and Silvio Jamil Ferzoli Guimarães.
+This repository hosts my Python implementation of the paper "Development of a Solar Radiation Map Using Artificial Intelligence Techniques", authored by Rafael Amauri Diniz Augusto, Cristiana Brasil Maia, and Silvio Jamil Ferzoli Guimarães.
 
 The code is entirely authored by me and can be used and redistributed in any way, in accordance with the MIT License.
 
