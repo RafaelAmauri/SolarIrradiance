@@ -6,10 +6,9 @@ The code is entirely authored by me and can be used and redistributed in any way
 
 ## Sample Results
 
-![Predicted Solar Irradiance in Minas Gerais for January 2018](assets/sample_predictions/interpolated_predictions/2018/1.png "Predicted Solar Irradiance in Minas Gerais for January 2018")
-Predicted Solar Irradiance in Minas Gerais for January 2018
+![Predicted Solar Irradiance in Minas Gerais for January 2018](assets/sample_predictions/interpolated_predictions/2018/1.png "Predicted Solar Irradiance in Minas Gerais for January 2018")  ![Predicted Solar Irradiance in Minas Gerais for June 2018](assets/sample_predictions/interpolated_predictions/2018/6.png)
 
-![Predicted Solar Irradiance in Minas Gerais for June 2018](assets/sample_predictions/interpolated_predictions/2018/6.png) Predicted Solar Irradiance in Minas Gerais for June 2018
+Predicted Solar Irradiance in Minas Gerais for January and June 2018
 
 The images above show the results obtained for predicting the solar irradiance in January and June of 2018 using 3 years worth of training data, from 2015 to 2017.
 
