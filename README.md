@@ -14,7 +14,15 @@ The images above show the results obtained for predicting the solar irradiance i
 
 The MAE (Median Absolute Error) score for the forecast value for these months was 0.4 and 0.37 kWh/m²/day. Given said months yielded an average irradiance of 6 and 3.3 kWh/m²/day respectively, this translates to an absolute error that represents less than 10% of the predicted irradiance. 
 
-## Installation
+## ⚠️ Disclaimer
+
+The project was entirely developed in Linux, for Linux! While I don't see a reason why it should't work with Windows or Mac, I recommend installing Linux, using a virtual machine or even using the Linux inside your smart fridge. 
+
+Before opening an issue, please make sure to test on Linux beforehand.
+
+## 🛠️  Installation 
+
+Install the latest Python version for the best results!
 
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the requirements.
 
@@ -22,7 +30,7 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the req
 pip install -r requirements.txt
 ```
 
-## Usage
+## 🚀 Usage
 
 Use the ```src/main.py``` file to orchestrate what stations to predict the values. The predictor comes with several attributes set with the default values. If you want to change them or explore what other attributes the predictor has, make sure to check the source code in ```src/hwts/predictor.py``` and change it to your will!
 
